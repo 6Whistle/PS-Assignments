@@ -1,4 +1,7 @@
 #define _USE_MATH_DEFINES
+
+#define P0_5 99.3
+#define P0_1 117.4
 #define P0_05 123.2
 #define P0_001 148.2 
 
@@ -60,25 +63,28 @@ double Gaussian_distribution(double ave, double dev){
 double Chi_Square_Verification(double *value, int size, double ave, double dev){
     double chi = 0;
 
-    double prob;
-
     for(int i = 0 ; i < size ; i++){
-        prob = exp(pow(value[i] - ave, 2) / (-2 * dev * dev)) / (sqrt(2 * M_PI) * dev);
-        chi += pow(value[i] - prob * size, 2) / (prob * size);
+        chi += pow((value[i] - ave) / dev, 2);
     }
 
     return chi;
 }
 
 void P_Value_Check(double chi){
-    if(chi < P0_05){
-        cout << "P_Value > 0.05" << endl;
+    if(chi < P0_5){
+        cout << "P_Value < 0.5" << endl;
+    }
+    else if(chi < P0_1){
+        cout << "0.1 < P_Value < 0.5" << endl;
+    }
+    else if(chi < P0_05){
+        cout << "0.01 < P_Value < 0.05" << endl;
     }
     else if(chi < P0_001){
-        cout << "0.05 > P_Value > 0.001" << endl;
+        cout << "0.001 < P_Value < 0.05" << endl;
     }
     else{
-        cout << "0.001 > P_Value" << endl;
+        cout << "P_Value > 0.001" << endl;
     }
 
     return;
