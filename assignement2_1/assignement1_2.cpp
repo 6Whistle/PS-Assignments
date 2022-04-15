@@ -62,6 +62,9 @@ class Tree{
         }
     }
 
+    Node* getRoot(){ return root; }
+    void setRoot(Node* i_root){root = i_root; }
+
     void makeTree(map<char, int>input){
         priority_queue<Node *, vector<Node *>,  Node> pq;
         for(auto i : input){
@@ -87,12 +90,82 @@ class Tree{
 
 class Huffman{
     private :
-    map<char, pair<uint16_t, bitset<8> > > table;
+    map<char, pair<uint8_t, bitset<16> > > table;
 
     public :
     Huffman(){};
-    void makeTable(Node* node, bitset<8> pattern, uint16_t size){
-        pattern.
+    void makeTable(Node* node, bitset<16> pattern, uint8_t size){
+        if(node->getChar())
+            table[node->getChar()] = make_pair(size, pattern);
+
+        size++;
+        if(node->getLeft())
+            makeTable(node->getLeft(), pattern, size);
+        if(node->getRight())
+            makeTable(node->getRight(), pattern.set(16 - size, 1), size);
+    }
+
+    void printTable(){
+        for(auto i : table)
+            cout << i.first << " : size-" << (unsigned int)(i.second.first) << ", pattern-" << i.second.second << endl;
+    }
+
+    void encoding(char* input_file_path){
+        ofstream write_table_file, write_file;
+        ifstream read_file;
+        unsigned int buf = 0;
+        int max = 0;
+
+        write_table_file.open("huffman_table.hbs", ios::binary | ios::trunc);
+        for(auto i : table){
+            unsigned int temp = (unsigned int)(i.first) << 8;
+            temp = (temp | (unsigned int)(i.second.first)) << 16;
+            temp = temp | (unsigned int)(i.second.second.to_ulong());
+            int t_size = 16 + (int)(i.second.first);
+
+            if(max + t_size > 32){
+                max = t_size + max - 32;
+                buf = buf | (temp >> (32 - t_size + max));
+                for(int i = 3; i >=0 ;i--)
+                    write_table_file << (unsigned char)(buf >> i * 8);
+                buf = temp << (t_size - max);
+            }
+            else{
+                buf = buf | (temp >> max);
+                max = t_size + max;
+            }
+        }
+        for(int i = 3; i >= 0; i--)
+            write_table_file << (unsigned char)(buf >> i * 8);
+        write_table_file.close();
+
+        read_file.open(input_file_path);
+        write_file.open("huffman_code.hbs", ios::binary | ios::trunc);
+        char ch = 0;
+        buf = 0;
+        max = 0;
+        while(!read_file.eof()){
+            read_file.get(ch);
+            unsigned int temp = table[ch].second.to_ulong() << 16;
+            unsigned int t_size = table[ch].first;
+
+            if(max + t_size > 32){
+                buf = buf | (temp >> max);
+                for(int i = 3; i >= 0; i--)
+                    write_file << (unsigned char)(buf >> i * 8);
+                buf = temp << (32 - max);
+                max = max + table[ch].first - 32;
+            }
+            else{
+                buf = buf | temp >> max;
+                max = max + table[ch].first;
+            }
+        }
+        for(int i = 3; i >= 0; i--)
+            write_file << (unsigned char)(buf >> i * 8);
+
+        write_file.close();
+        read_file.close();
     }
 
 };
@@ -112,10 +185,15 @@ int main(){
         input_file.get(c);
         ascii_count[c]++;
     }
+    input_file.close();
 
     Tree t;
     t.makeTree(ascii_count);
-
-
     t.printTree();
+    Huffman huf;
+    bitset<16> pattern = 0;
+    uint8_t size = 0;
+    huf.makeTable(t.getRoot(), pattern, size);
+    huf.printTable();
+    huf.encoding("input_data.txt");
 }
