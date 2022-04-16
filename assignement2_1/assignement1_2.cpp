@@ -124,11 +124,14 @@ class Huffman{
             int t_size = 16 + (int)(i.second.first);
 
             if(max + t_size > 32){
-                max = t_size + max - 32;
-                buf = buf | (temp >> (32 - t_size + max));
+                unsigned int b = temp >> max;
+                if(max == 32)
+                    b = 0;
+                buf = buf | b;
                 for(int i = 3; i >=0 ;i--)
                     write_table_file << (unsigned char)(buf >> i * 8);
-                buf = temp << (t_size - max);
+                buf = temp << (32 - max);
+                max = max + t_size - 32;
             }
             else{
                 buf = buf | (temp >> max);
@@ -144,30 +147,168 @@ class Huffman{
         char ch = 0;
         buf = 0;
         max = 0;
-        while(!read_file.eof()){
+        bool endf = false;
+
+        while(true){
+            unsigned int temp;
+            unsigned int t_size;
+
+
             read_file.get(ch);
-            unsigned int temp = table[ch].second.to_ulong() << 16;
-            unsigned int t_size = table[ch].first;
+            if(read_file.eof()){
+                endf = true;
+                ch = 127;
+            }
+
+            temp = table[ch].second.to_ulong() << 16;
+            t_size = table[ch].first;
 
             if(max + t_size > 32){
-                buf = buf | (temp >> max);
-                for(int i = 3; i >= 0; i--)
-                    write_file << (unsigned char)(buf >> i * 8);
+                unsigned int b = (temp >> max);
+                if(max == 32)
+                    b = 0;
+                buf = buf | b;
+                for(int i = 3; i >= 0; i--){
+                    char a = (unsigned char)(buf >> (i*8));
+                    write_file.write(&a, 1);
+                }
+
                 buf = temp << (32 - max);
-                max = max + table[ch].first - 32;
+                max = max + t_size - 32;
+                if(endf == true){
+                    for(int i = 3; i >= 0; i--){
+                        char a = (unsigned char)(buf >> (i*8));
+                        write_file.write(&a, 1);
+                    }
+                    break;
+                }
             }
             else{
+                if(read_file.eof()){
+                    temp = temp;
+                }
                 buf = buf | temp >> max;
-                max = max + table[ch].first;
+                max = max + t_size;
+                if(endf == true){
+                    for(int i = 3; i >= 0; i--){
+                        char a = (unsigned char)(buf >> (i*8));
+                        write_file.write(&a, 1);
+                    }     
+                    break;               
+                }
             }
         }
-        for(int i = 3; i >= 0; i--)
-            write_file << (unsigned char)(buf >> i * 8);
-
-        write_file.close();
         read_file.close();
+        write_file.close();
     }
 
+
+    void makeTableWithFile(char* read_table_path){
+        ifstream read_table_file;
+        read_table_file.open(read_table_path, ios::binary);
+        unsigned int buf = 0;
+        char input;
+        int max = 0;
+        while(true){
+            if(max < 8){
+                if(read_table_file.eof())
+                    break;
+                read_table_file.get(input);
+                bitset<32> temp = input;
+                temp <<= (24 - max);
+                for(int i = 0; i < max; i++)
+                    temp.set(31-i, 0);
+                buf = buf | temp.to_ulong();
+                max += 8;
+            }
+            char ch = buf >> 24;
+            buf = buf << 8;
+            max -= 8;
+
+            if(max < 8){
+                read_table_file.get(input);
+                bitset<32> temp = input;
+                temp <<= (24 - max);
+                for(int i = 0; i < max; i++)
+                    temp.set(31-i, 0);
+                buf = buf | temp.to_ulong();
+                max += 8;
+            }
+            uint8_t size = (buf >> 24);
+            buf = buf << 8;
+            max -= 8;
+
+            while(max < size){
+                read_table_file.get(input);
+                bitset<32> temp = input;
+                temp <<= (24 - max);
+                for(int i = 0; i < max; i++)
+                    temp.set(31-i, 0);
+                buf = buf | temp.to_ulong();
+                max += 8;
+            }
+            bitset<16> pattern = buf >> 16;                        
+            for(int i = 0; i < 16 - size; i++)
+                pattern.set(i, 0);
+            buf = buf << size;
+            max -= size;
+
+            table[ch] = make_pair(size, pattern);
+            cout << ch << " :  size - " << (int)size << " , pattern - " << pattern <<endl;
+        }
+        read_table_file.close();
+    }
+
+    void decoding(char* read_code_path, char* write_file_path){
+        ifstream read_code_file;
+        ofstream write_file;
+        read_code_file.open(read_code_path, ios::binary);
+        write_file.open(write_file_path, ios::trunc);
+
+        unsigned int buf = 0;
+        char input;
+        int max = 0;
+        int i = 0;
+        read_code_file.seekg(ios::beg);
+
+        while(true){
+            i++;
+
+            if(max < i){
+                if(read_code_file.eof())
+                    break;
+                read_code_file.read(&input,1);
+                bitset<32> temp = input;
+                temp <<= (24 - max);
+                for(int j = 0; j < max; j++)
+                    temp.set(31-j, 0);
+                buf = buf | temp.to_ulong();
+                max += 8;
+            }
+
+            for(auto j : table){
+                bitset<16> temp = buf >> 16;
+                for(int k = 0; k < 16 - i; k++)
+                    temp.set(k,0);
+                temp ^= j.second.second;
+                if((i == (int)(j.second.first)) && !(temp.any())){
+                    if(j.first == 127){
+                        write_file.close();
+                        read_code_file.close();
+                        return;
+                    }
+                    write_file << j.first;
+                    buf = buf << i;
+                    max -= i;
+                    i = 0;
+                    break;
+                }
+            }
+
+        }
+        write_file.close();
+        read_code_file.close();
+    }
 };
 
 int main(){
@@ -185,15 +326,23 @@ int main(){
         input_file.get(c);
         ascii_count[c]++;
     }
+    ascii_count[127]++;
     input_file.close();
 
     Tree t;
     t.makeTree(ascii_count);
     t.printTree();
+
     Huffman huf;
     bitset<16> pattern = 0;
     uint8_t size = 0;
     huf.makeTable(t.getRoot(), pattern, size);
     huf.printTable();
     huf.encoding("input_data.txt");
+
+    Huffman read;
+    read.makeTableWithFile("huffman_table.hbs");
+    read.printTable();
+    read.decoding("huffman_code.hbs", "output_data.txt");
+
 }
