@@ -95,8 +95,7 @@ class Tree{
     }
 
     //print BST
-    void printTree(){ root->print(); }
-    
+    void printTree(){ root->print(); } 
 };
 
 //Huffman Decoder/Encoder
@@ -125,7 +124,7 @@ class Huffman{
     }
 
     //Write table file and encode input file
-    void encoding(char* input_file_path){
+    void encoding(const char* input_file_path){
         ofstream write_table_file, write_file;
         ifstream read_file;
         unsigned int buf = 0;       //32 bits buffer

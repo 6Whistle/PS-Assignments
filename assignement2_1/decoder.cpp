@@ -22,7 +22,7 @@ class Huffman{
     }
 
     //make table using given file
-    void makeTableWithFile(char* read_table_path){
+    void makeTableWithFile(const char* read_table_path){
         ifstream read_table_file;
         read_table_file.open(read_table_path, ios::binary);     //read table file binary mode
         unsigned int buf = 0;       //32 bits buffer
@@ -78,7 +78,7 @@ class Huffman{
     }
 
     //decode file using table and write that data in file
-    void decoding(char* read_code_path, char* write_file_path){
+    void decoding(const char* read_code_path, const char* write_file_path){
         ifstream read_code_file;
         ofstream write_file;
         read_code_file.open(read_code_path, ios::binary);       //open encoding file binary mode
