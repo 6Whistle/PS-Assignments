@@ -41,6 +41,8 @@ class Huffman{
                 max += 8;                       //buffer's size update
             }
             char ch = buf >> 24;                //read 8 bits from buffer
+            if(ch == 127)
+                break;
             buf = buf << 8;
             max -= 8;
 
@@ -92,7 +94,7 @@ class Huffman{
 
         while(true){
             i++;            //pattern's size + 1
-
+         
             if(max < i){    //if buffer's size < pattern's size
                 if(read_code_file.eof())    //if end of file, break loop
                     break;
@@ -110,6 +112,8 @@ class Huffman{
                 if(i != (int)(j.second.first))      //if pattern size is different, continue
                     continue;
 
+                if(j.first == 127)
+                    int k = 1;
                 bitset<16> temp = buf >> 16;        //buffer XOR table's pattern
                 for(int k = 0; k < 16 - i; k++)
                     temp.set(k,0);

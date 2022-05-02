@@ -153,8 +153,28 @@ class Huffman{
                 max = t_size + max;             //change buffer's size
             }
         }
-        for(int i = 3; i >= 0; i--)             //input last element in buffer
-            write_table_file << (unsigned char)(buf >> i * 8);
+        unsigned int temp = 127 << 24;
+        int t_size = 8;
+        if(max + t_size > 32){      //if buffer + temp size > 32 bits
+            unsigned int b = temp >> max;       //write 32 bit buffer
+            if(max == 32)
+                b = 0;
+            buf = buf | b;
+            for(int i = 3; i >=0 ;i--){            //write last element in buffer
+                char a = (unsigned char)(buf >> (i*8));
+                write_table_file.write(&a, 1);        
+            }
+            buf = temp << (32 - max);       //buf = temp's not written bits
+            max = max + t_size - 32;        //change buffer's size
+        }
+        else{
+            buf = buf | (temp >> max);      //buffer = [buffer|temp]
+            max = t_size + max;             //change buffer's size
+        }
+        for(int i = 3; i >= 0; i--){            //write last element in buffer
+            char a = (unsigned char)(buf >> (i*8));
+            write_table_file.write(&a, 1);        
+        }
         write_table_file.close();
 
         //encode input file
@@ -213,7 +233,7 @@ class Huffman{
 
 int main(){
     ifstream input_file;
-    input_file.open("input_data.txt");      //open input_data.txt
+    input_file.open("test_input3.txt");      //open input_data.txt
     map<char, int> ascii_count;             //character's probability
 
     if(!input_file.is_open()){
@@ -237,6 +257,6 @@ int main(){
     bitset<16> pattern = 0;
     uint8_t size = 0;
     huf.makeTable(t.getRoot(), pattern, size);      //Make table using BST
-    //huf.printTable();                     //Print table           
-    huf.encoding("input_data.txt");         //Make table file and encoding file
+    huf.printTable();                     //Print table           
+    huf.encoding("test_input3.txt");         //Make table file and encoding file
 }
