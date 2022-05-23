@@ -310,7 +310,6 @@ class User : public Player{
             win++;
         }
     }
-
 };
 
 
